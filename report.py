@@ -32,7 +32,7 @@ def plot_comparison(results, out):
     ax.set_xlabel("Experiment")
     ax.set_ylabel("Score")
     ax.set_title("SmartBin experiment comparison (test set)")
-    ax.legend(loc="lower right")
+    ax.legend(loc="upper right")
     ax.spines[["top", "right"]].set_visible(False)
     _save(fig, out)
 

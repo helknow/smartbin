@@ -1,0 +1,50 @@
+device: cuda
+images: 2527  {'train': 1768, 'test': 380, 'val': 379}
+overfit check (E2, one batch): 1.00
+
+=== E1 ===
+epoch 1/10  train_acc=0.614  val_acc=0.749
+epoch 2/10  train_acc=0.782  val_acc=0.765
+epoch 3/10  train_acc=0.833  val_acc=0.786
+epoch 4/10  train_acc=0.856  val_acc=0.789
+epoch 5/10  train_acc=0.893  val_acc=0.781
+epoch 6/10  train_acc=0.915  val_acc=0.799
+epoch 7/10  train_acc=0.917  val_acc=0.818
+epoch 8/10  train_acc=0.941  val_acc=0.836
+epoch 9/10  train_acc=0.949  val_acc=0.815
+epoch 10/10  train_acc=0.952  val_acc=0.823
+E1: test_acc=0.866 macro_f1=0.851 time=285s
+
+=== E2 ===
+epoch 1/10  train_acc=0.606  val_acc=0.715
+epoch 2/10  train_acc=0.817  val_acc=0.805
+epoch 3/10  train_acc=0.894  val_acc=0.797
+epoch 4/10  train_acc=0.929  val_acc=0.815
+epoch 5/10  train_acc=0.950  val_acc=0.807
+epoch 6/10  train_acc=0.971  val_acc=0.802
+epoch 7/10  train_acc=0.974  val_acc=0.810
+epoch 8/10  train_acc=0.984  val_acc=0.823
+epoch 9/10  train_acc=0.990  val_acc=0.828
+epoch 10/10  train_acc=0.991  val_acc=0.823
+E2: test_acc=0.847 macro_f1=0.833 time=276s
+
+=== E3 ===
+epoch 1/10  train_acc=0.710  val_acc=0.805
+epoch 2/10  train_acc=0.902  val_acc=0.834
+epoch 3/10  train_acc=0.953  val_acc=0.836
+epoch 4/10  train_acc=0.965  val_acc=0.821
+epoch 5/10  train_acc=0.981  val_acc=0.813
+epoch 6/10  train_acc=0.991  val_acc=0.805
+epoch 7/10  train_acc=0.988  val_acc=0.821
+epoch 8/10  train_acc=0.994  val_acc=0.828
+epoch 9/10  train_acc=0.995  val_acc=0.828
+epoch 10/10  train_acc=0.997  val_acc=0.842
+E3: test_acc=0.845 macro_f1=0.833 time=280s
+
+=== E4 ===
+epoch 1/10  train_acc=0.715  val_acc=0.813
+epoch 2/10  train_acc=0.904  val_acc=0.844
+epoch 3/10  train_acc=0.956  val_acc=0.828
+epoch 4/10  train_acc=0.968  val_acc=0.818
+epoch 5/10  train_acc=0.981  val_acc=0.834
+epoch 6/10  train_acc=0.994  val_acc=0.821
