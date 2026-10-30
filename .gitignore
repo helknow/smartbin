@@ -1,0 +1,7 @@
+weights/
+data/
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+.superpowers/
+.pytest_cache/
