@@ -134,6 +134,8 @@ TrashNet zip → split (seed 42, splits.csv) → DataLoaders → train_one(E1..E
 
 ## 10. Team split (6 people)
 
+> **Update (2026-10-30):** this is a solo project. The roles below are one person's checklist, and the 6-person assumption in section 1 no longer applies.
+
 | Role | Owns |
 |------|------|
 | 1. Data | Download, split, `splits.csv`, sample-image grid |

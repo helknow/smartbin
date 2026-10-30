@@ -63,7 +63,7 @@ python -m venv .venv
 
 Then open http://localhost:7860. On macOS or Linux, use `.venv/bin/` instead of `.venv/Scripts/`.
 
-The app needs `weights/best.pt`, which isn't in the repository because it is 537 MB. Download it from the team's shared folder (link to be added once uploaded), or create it by training (below).
+The app needs `weights/best.pt`, which isn't in the repository because it is 537 MB. Create it by training (below), or copy an existing `best.pt` into `weights/`.
 
 ## Train the models
 
