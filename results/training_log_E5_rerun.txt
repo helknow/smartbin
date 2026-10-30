@@ -1,0 +1,24 @@
+device: cuda
+images: 2527  {'train': 1768, 'test': 380, 'val': 379}
+overfit check (E2, one batch): 1.00
+
+=== E5 ===
+epoch 1/10  train_acc=0.375  val_acc=0.530
+epoch 2/10  train_acc=0.606  val_acc=0.652
+epoch 3/10  train_acc=0.686  val_acc=0.681
+epoch 4/10  train_acc=0.727  val_acc=0.704
+epoch 5/10  train_acc=0.766  val_acc=0.718
+epoch 6/10  train_acc=0.775  val_acc=0.739
+epoch 7/10  train_acc=0.774  val_acc=0.752
+epoch 8/10  train_acc=0.800  val_acc=0.755
+epoch 9/10  train_acc=0.804  val_acc=0.765
+epoch 10/10  train_acc=0.816  val_acc=0.770
+E5: test_acc=0.755 macro_f1=0.694 time=226s
+exp_id  test_acc  macro_f1  trash_f1  train_time_s  trainable_params  best_val_acc
+    E1  0.865789  0.851290  0.764706         285.0         119570438      0.836412
+    E2  0.847368  0.832725  0.742857         275.8          25697286      0.828496
+    E3  0.844737  0.832799  0.756757         280.4          25697286      0.841689
+    E4  0.842105  0.816880  0.645161         303.2          32776710      0.844327
+    E5  0.755263  0.693872  0.320000         225.6              7686      0.770449
+
+Best experiment: E1 (copied to weights/best.pt)

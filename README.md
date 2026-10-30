@@ -16,7 +16,7 @@ The split is stratified 70 / 15 / 15 (1,768 train, 379 validation, 380 test) wit
 
 ## Experiments
 
-Each experiment changes one thing from the one before it. All ran for 10 epochs with batch size 32 and kept the weights with the best validation accuracy.
+Each experiment makes one main change from the run it builds on: E2 builds on E1, E3 on E2, E4 on E3, and E5 on E3. All ran for 10 epochs with batch size 32 and kept the weights with the best validation accuracy.
 
 | ID | What changed | Trainable parameters | Test accuracy | Macro F1 | `trash` F1 | Training time |
 |----|---|---:|---:|---:|---:|---:|
@@ -24,7 +24,7 @@ Each experiment changes one thing from the one before it. All ran for 10 epochs 
 | E2 | Smaller head: `Linear(25088→1024)`, ReLU, `Dropout(0.3)`, `Linear(1024→6)` | 25,697,286 | 84.7 % | 0.833 | 0.743 | 276 s |
 | E3 | Optimiser: Adam, lr 1e-4, instead of SGD | 25,697,286 | 84.5 % | 0.833 | 0.757 | 280 s |
 | E4 | Fine-tuning: last conv block unfrozen, lr 1e-5 for conv and 1e-4 for head | 32,776,710 | 84.2 % | 0.817 | 0.645 | 303 s |
-| E5 | Different architecture: frozen MobileNetV2 | 7,686 | 73.2 % | 0.662 | 0.261 | 253 s |
+| E5 | Different architecture: frozen MobileNetV2 | 7,686 | 75.5 % | 0.694 | 0.320 | 226 s |
 
 Times are from an RTX 4060 laptop GPU.
 
@@ -32,10 +32,10 @@ Times are from an RTX 4060 laptop GPU.
 
 ### What we learned
 
-- **Smaller head (E1→E2):** about 4.6× fewer trainable parameters cost 1.8 points of accuracy. The saved model shrinks from 537 MB to 162 MB.
+- **Smaller head (E1→E2):** about 4.6× fewer trainable parameters shrink the saved model from 537 MB to 162 MB. Accuracy is 1.8 points lower, which is 7 of 380 test images and within noise. This isn't purely a size effect: E1 keeps VGG16's ImageNet-pretrained fully connected layers, while E2's new head starts from random weights and uses dropout 0.3 instead of 0.5. Training time barely changed (285 s vs 276 s).
 - **Optimiser (E2→E3):** Adam and SGD gave practically the same result.
-- **Fine-tuning (E3→E4):** this did not help. Training accuracy reached 99.8 % while validation stayed at 84.4 %, which is overfitting, and `trash` F1 fell to 0.645. With only about 1,800 training images, the extra trainable layers memorised the data.
-- **MobileNetV2 (E5):** training accuracy was only 77.6 % at epoch 10 and still rising, so this model was under-trained rather than simply worse. More epochs or a higher learning rate may narrow the gap.
+- **Fine-tuning (E3→E4):** no measurable gain on this seed. The VGG heads overfit quickly even without fine-tuning: training accuracy reached 99.1 % in E2 and 99.7 % in E3, while validation stayed around 83–84 %. E4's validation accuracy moved between 81.8 % and 84.4 % and peaked at epoch 2 (tied with epoch 10, and the earlier epoch is kept), so the tested E4 model comes from epoch 2.
+- **MobileNetV2 (E3→E5):** this is the smallest model, with a 9 MB file, and the least accurate. Training accuracy (81.6 %) and validation accuracy (77.0 %) were both still rising at epoch 10, so it was under-trained at this learning rate. More epochs may narrow the gap, but we didn't measure that. Its frozen BatchNorm layers must stay in eval mode; an earlier run that let their statistics change scored 73.2 % (see `results/training_log.txt`).
 
 ### Confusion matrix of the best model
 
@@ -46,9 +46,9 @@ The most common mistakes are glass predicted as metal or plastic (7 each) and pl
 ## Limitations
 
 - **Small differences between E1–E4 are not conclusive.** Each experiment ran once, with one seed. E1 and E4 differ by 9 of 380 test images, and the 95 % margin on 86.6 % is about ±3.4 points.
-- **86.6 % is slightly optimistic.** The best model was chosen using test accuracy, so the test set is not fully independent of that choice. By validation accuracy alone, E4 (84.4 %) would edge out E1 (83.6 %).
+- **86.6 % is slightly optimistic.** The best model was chosen using test accuracy, so the test set is not fully independent of that choice. E1 ranks only third on validation accuracy (E4 84.4 %, E3 84.2 %, E1 83.6 %). Choosing by validation would pick E4, whose test accuracy of 84.2 % is just under our 85 % target.
 - **Real photos may score lower.** TrashNet photos show one item on a white background. The model has not been measured on phone photos with cluttered backgrounds.
-- **It can't recognise things that aren't waste.** It always picks one of the 6 classes. The "Not sure" warning appears when the top probability is below 50 %, but it doesn't catch everything: a pure-noise image got "cardboard, 86 %" with no warning.
+- **It can't recognise things that aren't waste.** It always picks one of the 6 classes. The "Not sure" warning appears when the top probability is below 50 %, but it doesn't catch everything. Without any warning, a photo of a building got "cardboard, 51 %" and a photo of a flower got "plastic, 68 %".
 - **Bin names and colours are illustrative.** They are not an official Kazakhstan standard.
 
 ## Run the app
@@ -63,19 +63,21 @@ python -m venv .venv
 
 Then open http://localhost:7860. On macOS or Linux, use `.venv/bin/` instead of `.venv/Scripts/`.
 
-The app needs `weights/best.pt`, which isn't in the repository because it is 537 MB. Copy it from the team's shared folder, or create it by training (below).
+The app needs `weights/best.pt`, which isn't in the repository because it is 537 MB. Download it from the team's shared folder (link to be added once uploaded), or create it by training (below).
 
 ## Train the models
+
+The repository already includes our results, and experiments listed in `results/results.csv` are skipped. To retrain, delete that file first, then run:
 
 ```bash
 .venv/Scripts/python run_experiments.py
 ```
 
-This downloads TrashNet and trains every experiment, which takes about 25 minutes on an RTX 4060. If a run is interrupted, run it again: finished experiments are skipped. To start from scratch, delete `results/results.csv`.
+This downloads TrashNet and trains every experiment, which takes about 25 minutes on an RTX 4060. If a run is interrupted, run the same command again: finished experiments are skipped.
 
 `torch` from `requirements.txt` may be a CPU-only build, depending on your platform. To train on an NVIDIA GPU, install a CUDA build from [pytorch.org](https://pytorch.org/get-started/locally/).
 
-No GPU? Use [`notebooks/smartbin_training.ipynb`](notebooks/smartbin_training.ipynb) on Google Colab. It runs the same code.
+No GPU? Use [`notebooks/smartbin_training.ipynb`](notebooks/smartbin_training.ipynb) on Google Colab. It runs the same code. Our results came from the local GPU run, so the notebook hasn't been run on Colab itself yet.
 
 ## Tests
 
@@ -96,5 +98,5 @@ The tests run on CPU and don't download pretrained weights.
 | `run_experiments.py` | Runs the whole pipeline |
 | `app.py` | Gradio app |
 | `notebooks/` | Colab version of the training run |
-| `results/` | Results table, charts, per-class reports, and training logs |
-| `Dockerfile` | Optional CPU container for the app (mount `weights/` at `/app/weights`) |
+| `results/` | Results table, charts, per-class reports, and training logs (`training_log_part1.txt` has E1–E3, `training_log.txt` has E4 and the earlier E5 run, `training_log_E5_rerun.txt` has the final E5) |
+| `Dockerfile` | Optional CPU container for the app (mount `weights/` at `/app/weights`). Not built or tested yet. |
