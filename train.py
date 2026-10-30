@@ -24,9 +24,20 @@ def make_optimizer(exp_id, model):
     raise ValueError(f"Unknown experiment: {exp_id}")
 
 
+def set_train_mode(model):
+    """Training mode, except that frozen BatchNorm layers stay in eval mode so their statistics don't change."""
+    model.train()
+    for m in model.modules():
+        if isinstance(m, nn.modules.batchnorm._BatchNorm) and not any(p.requires_grad for p in m.parameters()):
+            m.eval()
+
+
 def _run_epoch(model, loader, criterion, device, optimizer=None):
     is_train = optimizer is not None
-    model.train(is_train)
+    if is_train:
+        set_train_mode(model)
+    else:
+        model.eval()
     total_loss, correct, seen = 0.0, 0, 0
     with torch.set_grad_enabled(is_train):
         for x, y in loader:

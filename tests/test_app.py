@@ -1,11 +1,13 @@
 import io
 
+import gradio as gr
 import pytest
 import torch
 from PIL import Image
 
 import app
-from app import load, predict, save_checkpoint
+from app import SafeImage, load, predict, save_checkpoint
+from gradio.components.image import ImageData
 from model import BIN_INFO, EXPERIMENTS, build_model
 
 
@@ -62,3 +64,25 @@ def test_exif_rotation_applied(model, monkeypatch):
     monkeypatch.setattr(app, "eval_transform", lambda: (lambda im: (seen.setdefault("size", im.size), real(im))[1]))
     predict(model, img)
     assert seen["size"] == (200, 400)   # portrait after transpose
+
+
+def _truncated_jpeg():
+    buf = io.BytesIO()
+    Image.effect_noise((256, 256), 60).convert("RGB").save(buf, "JPEG")
+    return buf.getvalue()[:2000]
+
+
+@pytest.mark.parametrize("content", [b"this is not an image", _truncated_jpeg()], ids=["garbage", "truncated"])
+def test_unreadable_upload_shows_friendly_error(tmp_path, content):
+    bad = tmp_path / "bad.jpg"
+    bad.write_bytes(content)
+    with pytest.raises(gr.Error, match="Couldn't read"):
+        SafeImage(type="pil").preprocess(ImageData(path=str(bad), orig_name="bad.jpg"))
+
+
+def test_safe_image_passes_valid_upload_and_keeps_frontend_component(tmp_path):
+    good = tmp_path / "good.jpg"
+    Image.new("RGB", (64, 64)).save(good)
+    component = SafeImage(type="pil")
+    assert component.preprocess(ImageData(path=str(good), orig_name="good.jpg")).size == (64, 64)
+    assert component.get_block_name() == "image"

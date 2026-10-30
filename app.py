@@ -17,6 +17,17 @@ LOW_CONFIDENCE = 0.5
 LOW_CONFIDENCE_MESSAGE = "Not sure. Try a clearer photo of one item on a plain background"
 
 
+class SafeImage(gr.Image):
+    """gr.Image that explains unreadable uploads (corrupt files, iPhone HEIC) instead of a generic error."""
+    is_template = True
+
+    def preprocess(self, payload):
+        try:
+            return super().preprocess(payload)
+        except OSError as err:  # includes PIL.UnidentifiedImageError
+            raise gr.Error("Couldn't read this image. Please upload a JPG or PNG photo.") from err
+
+
 def load(path, device="cpu"):
     path = Path(path)
     if not path.exists():
@@ -71,7 +82,7 @@ def build_ui(model, meta):
         gr.Markdown("# SmartBin: Which bin does it go in?\nUpload a photo of one waste item.")
         with gr.Row():
             with gr.Column():
-                image = gr.Image(type="pil", label="Photo of the item")
+                image = SafeImage(type="pil", label="Photo of the item")
                 button = gr.Button("Classify", variant="primary")
             with gr.Column():
                 card = gr.HTML()

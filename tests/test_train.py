@@ -5,7 +5,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from model import build_model
-from train import evaluate, fit, make_optimizer, pending_experiments
+from train import evaluate, fit, make_optimizer, pending_experiments, set_train_mode
 
 
 def tiny_model():
@@ -64,3 +64,24 @@ def test_pending_experiments(tmp_path):
     assert pending_experiments(csv, ["E1", "E2"]) == ["E1", "E2"]
     pd.DataFrame({"exp_id": ["E1"]}).to_csv(csv, index=False)
     assert pending_experiments(csv, ["E1", "E2", "E3"]) == ["E2", "E3"]
+
+
+def test_frozen_batchnorm_stays_frozen_during_fit():
+    torch.manual_seed(0)
+    model = build_model("E5", pretrained=False)
+    before = {k: v.clone() for k, v in model.state_dict().items() if k.startswith("features")}
+    ds = TensorDataset(torch.randn(8, 3, 64, 64), torch.arange(8) % 6)
+    loaders = {s: DataLoader(ds, batch_size=4) for s in ["train", "val"]}
+    model, _ = fit(model, make_optimizer("E5", model), loaders, epochs=1, device="cpu")
+    changed = [k for k, v in before.items() if not torch.equal(v, model.state_dict()[k])]
+    assert changed == []
+
+
+def test_set_train_mode_keeps_only_trainable_parts_training():
+    model = build_model("E5", pretrained=False)
+    set_train_mode(model)
+    assert model.classifier.training
+    assert not any(m.training for m in model.features.modules() if isinstance(m, nn.BatchNorm2d))
+    e4 = build_model("E4", pretrained=False)
+    set_train_mode(e4)
+    assert e4.classifier.training and e4.features.training

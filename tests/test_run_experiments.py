@@ -61,3 +61,10 @@ def test_copy_examples_one_per_class_from_test_split(fake_root, tmp_path):
     test_names = {p.split("/")[-1] for p in df[df.split == "test"].path}
     for c in CLASSES:
         assert (out / f"{c}.jpg").stat().st_size == (fake_root / c / next(n for n in sorted(test_names) if n.startswith(c))).stat().st_size
+
+
+def test_select_best_explains_missing_checkpoint(tmp_path):
+    (tmp_path / "results").mkdir()
+    pd.DataFrame({"exp_id": ["E1"], "test_acc": [0.9]}).to_csv(tmp_path / "results" / "results.csv", index=False)
+    with pytest.raises(SystemExit, match="results.csv"):
+        select_best(tmp_path)

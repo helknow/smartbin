@@ -16,7 +16,7 @@ from torch import nn
 from data import download_trashnet, make_loaders, make_splits
 from model import CLASSES, EXPERIMENTS, build_model, count_trainable, save_checkpoint
 from report import plot_comparison, plot_confusion, plot_curves
-from train import evaluate, fit, make_optimizer, pending_experiments
+from train import evaluate, fit, make_optimizer, pending_experiments, set_train_mode
 
 SEED = 42
 RESULT_COLUMNS = ["exp_id", "test_acc", "macro_f1", "trash_f1", "train_time_s", "trainable_params", "best_val_acc"]
@@ -30,7 +30,7 @@ def overfit_check(exp_id, loaders, device, pretrained=True, steps=30):
     criterion = nn.CrossEntropyLoss()
     x, y = next(iter(loaders["train"]))
     x, y = x.to(device), y.to(device)
-    model.train()
+    set_train_mode(model)
     for _ in range(steps):
         optimizer.zero_grad()
         criterion(model(x), y).backward()
@@ -78,7 +78,12 @@ def select_best(out_dir):
     out_dir = Path(out_dir)
     results = pd.read_csv(out_dir / "results" / "results.csv")
     best = results.loc[results["test_acc"].idxmax(), "exp_id"]
-    shutil.copyfile(out_dir / "weights" / f"{best}.pt", out_dir / "weights" / "best.pt")
+    checkpoint = out_dir / "weights" / f"{best}.pt"
+    if not checkpoint.exists():
+        raise SystemExit(
+            f"{checkpoint} is missing, so nothing was trained: results/results.csv already lists these experiments. "
+            "Delete results/results.csv to retrain, or copy the checkpoints into weights/.")
+    shutil.copyfile(checkpoint, out_dir / "weights" / "best.pt")
     return best
 
 
