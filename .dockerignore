@@ -1,0 +1,9 @@
+.venv/
+.venv-gpu/
+data/
+weights/
+notebooks/
+tests/
+docs/
+.git/
+.superpowers/
