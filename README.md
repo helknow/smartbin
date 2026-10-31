@@ -70,6 +70,12 @@ The charts and logs are in [`longer_training/`](longer_training/). Those runs we
 - **It can't recognise things that aren't waste.** It always picks one of the 6 classes. The "Not sure" warning appears when the top probability is below 50 %, but it doesn't catch everything. Without any warning, a photo of a building got "cardboard, 51 %" and a photo of a flower got "plastic, 68 %".
 - **Bin names and colours are illustrative.** They are not an official Kazakhstan standard.
 
+## Try it online
+
+**[smartbin-iota.vercel.app](https://smartbin-iota.vercel.app)** runs the 30-epoch E5 model (80.5 % test accuracy, 9 MB), because E1's 537 MB file is too big to load in a web page. The model runs in the visitor's browser with ONNX Runtime Web, so photos aren't uploaded. On the 380 test photos, the website scored 309 correct (81.3 %); the small difference from 80.5 % probably comes from how a browser resizes images.
+
+The site is in `web/`. To rebuild its model, run `export_web_model.py` (it also needs `pip install onnx onnxruntime`).
+
 ## Run the app
 
 Python 3.10 or newer.
@@ -116,6 +122,7 @@ The tests run on CPU and don't download pretrained weights.
 | `report.py` | Charts |
 | `run_experiments.py` | Runs the whole pipeline |
 | `app.py` | Gradio app |
+| `web/` | The public website, with the E5 model exported by `export_web_model.py` |
 | `notebooks/` | Colab version of the training run |
 | `results/` | Results table, charts, per-class reports, and training logs (`training_log_part1.txt` has E1–E3, `training_log.txt` has E4 and the earlier E5 run, `training_log_E5_rerun.txt` has the final E5) |
 | `longer_training/` | The 30-epoch test of E1 and E5: results, charts, and `training_log.txt` (E5 appears twice because the run was stopped and restarted) |

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartBin: which bin does it go in?</title>
+<meta name="description" content="Upload a photo of one waste item and a small neural network tells you which bin it belongs in. It runs in your browser.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+  :root {
+    --ink: #16302B; --text: #33463F; --muted: #56635F; --paper: #F6F4EC; --card: #FFFDF7;
+    --line: #DDD8C8; --track: #E4E0D1; --teal: #1F6F66; --accent: #B8431A; --warm: #F2A65A;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--paper); color: var(--text); font: 400 18px/1.5 'IBM Plex Sans', Arial, sans-serif; }
+  h1, h2, h3 { color: var(--ink); font-family: 'Space Grotesk', Arial, sans-serif; line-height: 1.15; }
+  h1 { font-size: clamp(34px, 5vw, 52px); font-weight: 700; letter-spacing: -0.5px; }
+  h2 { font-size: 28px; font-weight: 700; margin-bottom: 12px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  header { padding: 40px 0 24px; }
+  header p { font-size: 20px; margin-top: 8px; }
+  .tool { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+  .drop { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+          width: 100%; min-height: 260px; padding: 16px; gap: 8px; cursor: pointer; overflow: hidden;
+          background: var(--paper); border: 2px dashed var(--muted); border-radius: 12px; }
+  .drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); }
+  .drop strong { color: var(--ink); font-size: 22px; font-family: 'Space Grotesk', Arial, sans-serif; }
+  .drop img { max-width: 100%; max-height: 320px; border-radius: 8px; }
+  .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .examples-label { margin: 16px 0 8px; color: var(--muted); font-size: 16px; }
+  .examples { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .examples button { display: block; width: 100%; min-height: 44px; padding: 0; border: 2px solid transparent; border-radius: 8px;
+                     background: none; cursor: pointer; overflow: hidden; }
+  .examples button:hover, .examples button:focus-visible { border-color: var(--accent); outline: none; }
+  .examples img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+  .waiting { color: var(--muted); }
+  .bin { color: #F6F4EC; font: 700 28px/1.2 'Space Grotesk', Arial, sans-serif; padding: 16px 20px; border-radius: 12px; }
+  .tip { margin: 16px 0; font-size: 18px; }
+  .warn { margin: 16px 0 0; padding: 12px 16px; border-radius: 8px; background: #F9DDBD; color: var(--ink); font-weight: 600; }
+  .error { color: var(--accent); font-weight: 600; }
+  .row { display: grid; grid-template-columns: 96px 1fr 64px; gap: 12px; align-items: center; margin-top: 8px; }
+  .row b { color: var(--ink); font-weight: 600; }
+  .row span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { height: 16px; background: var(--track); border-radius: 4px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--teal); }
+  .scores-label { margin-top: 20px; color: var(--muted); font-size: 16px; }
+  section { margin-top: 40px; }
+  .about { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; background: var(--card); }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--ink); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.here td { background: #FBEBD9; font-weight: 600; color: var(--ink); }
+  .note { margin-top: 12px; color: var(--muted); font-size: 16px; }
+  footer { margin: 48px 0 32px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 16px; }
+  a { color: var(--accent); }
+  @media (max-width: 760px) {
+    .tool, .about { grid-template-columns: 1fr; }
+    .drop { min-height: 200px; }
+    .examples { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Which bin does it go in?</h1>
+    <p>Upload a photo of one waste item. SmartBin looks at it and names the bin.</p>
+  </header>
+
+  <main>
+    <div class="tool">
+      <div class="panel">
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/*">
+          <span id="drop-content"><strong>Choose a photo</strong><br>or drop it here</span>
+        </label>
+        <p class="examples-label">Or try a photo the model never trained on:</p>
+        <div class="examples" id="examples"></div>
+      </div>
+      <div class="panel" id="result" aria-live="polite"><p class="waiting" id="status">Loading the model…</p></div>
+    </div>
+
+    <section class="about">
+      <div>
+        <h2>How it works</h2>
+        <p>A neural network called MobileNetV2 was already trained to recognise shapes and textures. Its last layer was retrained on 1,768 photos from the TrashNet dataset to tell six types of waste apart.</p>
+        <p class="note">The model runs inside your browser, so your photo isn’t uploaded anywhere.</p>
+      </div>
+      <div>
+        <h2>What it can’t do</h2>
+        <ul>
+          <li>It learned from single items on plain white backgrounds, so real photos may score lower.</li>
+          <li>It always picks one of the six types, even for things that aren’t waste.</li>
+          <li>The bin names and colours are examples, not an official standard.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>The experiments behind it</h2>
+      <p style="margin-bottom:12px">This site runs the small model, because its 9 MB file loads quickly in a browser. The most accurate model is 537 MB, which is too big to load in a web page.</p>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Run</th><th>What changed</th><th class="n">Epochs</th><th class="n">Test accuracy</th><th class="n">Model file</th></tr>
+          <tr><td>E1</td><td>Baseline VGG16</td><td class="n">10</td><td class="n">86.6%</td><td class="n">537 MB</td></tr>
+          <tr><td>E2</td><td>Smaller classifier head</td><td class="n">10</td><td class="n">84.7%</td><td class="n">162 MB</td></tr>
+          <tr><td>E3</td><td>Adam instead of SGD</td><td class="n">10</td><td class="n">84.5%</td><td class="n">162 MB</td></tr>
+          <tr><td>E4</td><td>Last block fine-tuned</td><td class="n">10</td><td class="n">84.2%</td><td class="n">162 MB</td></tr>
+          <tr><td>E5</td><td>MobileNetV2</td><td class="n">10</td><td class="n">75.5%</td><td class="n">9 MB</td></tr>
+          <tr class="here"><td>E5</td><td>MobileNetV2, trained longer (this site)</td><td class="n">30</td><td class="n">80.5%</td><td class="n">9 MB</td></tr>
+        </table>
+      </div>
+      <p class="note">Each run was measured once on the same 380 test photos, so small differences don’t prove one model is better.</p>
+    </section>
+  </main>
+
+  <footer>SmartBin, a university project for ICT Assignment 2 at QAIRU. Dataset: <a href="https://github.com/garythung/trashnet">TrashNet</a> by Gary Thung and Mindy Yang.</footer>
+</div>
+
+<script src="vendor/ort.wasm.min.js"></script>
+<script>
+const CLASSES = ["cardboard", "glass", "metal", "paper", "plastic", "trash"];
+const BIN_INFO = {
+  cardboard: { bin: "Paper & cardboard bin (blue)", color: "#2563eb", tip: "Flatten boxes and keep them dry." },
+  glass: { bin: "Glass bin (green)", color: "#15803d", tip: "Empty and rinse bottles and jars; remove the lids." },
+  metal: { bin: "Metal bin (grey)", color: "#5b6370", tip: "Rinse cans and crush them if you can." },
+  paper: { bin: "Paper & cardboard bin (blue)", color: "#2563eb", tip: "Keep it clean and dry; greasy paper goes in general trash." },
+  plastic: { bin: "Plastic bin (yellow)", color: "#8a5f00", tip: "Empty and rinse containers; squash bottles to save space." },
+  trash: { bin: "General waste bin (black)", color: "#1f2937", tip: "This item can't be recycled with the other materials." },
+};
+const MEAN = [0.485, 0.456, 0.406];
+const STD = [0.229, 0.224, 0.225];
+const NOT_SURE_BELOW = 0.5;
+const UNREADABLE = "Couldn't read this image. Please upload a JPG or PNG photo.";
+
+const result = document.getElementById("result");
+const dropContent = document.getElementById("drop-content");
+
+ort.env.wasm.wasmPaths = new URL("vendor/", location.href).href;
+ort.env.wasm.numThreads = 1;
+const session = ort.InferenceSession.create("model.onnx", { executionProviders: ["wasm"] });
+const MODEL_FAILED = "The model couldn't load. Please refresh the page.";
+session.then(
+  () => { document.getElementById("status").textContent = "Choose a photo to see which bin it goes in."; },
+  () => { result.innerHTML = `<p class="error">${MODEL_FAILED}</p>`; },
+);
+
+// Same steps as eval_transform in model.py: shorter side to 256, centre crop 224, ImageNet normalisation.
+function toTensor(bitmap) {
+  const scale = 256 / Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 224;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  const w = bitmap.width * scale, h = bitmap.height * scale;
+  ctx.drawImage(bitmap, (224 - w) / 2, (224 - h) / 2, w, h);
+  const { data } = ctx.getImageData(0, 0, 224, 224);
+  const out = new Float32Array(3 * 224 * 224);
+  for (let i = 0; i < 224 * 224; i++) {
+    for (let c = 0; c < 3; c++) {
+      out[c * 224 * 224 + i] = (data[i * 4 + c] / 255 - MEAN[c]) / STD[c];
+    }
+  }
+  return new ort.Tensor("float32", out, [1, 3, 224, 224]);
+}
+
+function softmax(logits) {
+  const max = Math.max(...logits);
+  const exps = Array.from(logits, (v) => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map((v) => v / sum);
+}
+
+async function classifyImage(blob) {
+  const model = await session;
+  const bitmap = await createImageBitmap(blob);
+  const outputs = await model.run({ image: toTensor(bitmap) });
+  bitmap.close();
+  return softmax(outputs.logits.data)
+    .map((score, i) => ({ label: CLASSES[i], score }))
+    .sort((a, b) => b.score - a.score);
+}
+window.classifyImage = classifyImage;
+
+function show(ranked) {
+  const top = ranked[0];
+  const info = BIN_INFO[top.label];
+  const percent = (s) => (s * 100).toFixed(1) + "%";
+  const rows = ranked.slice(0, 3).map((r) =>
+    `<div class="row"><b>${r.label}</b><div class="bar"><i style="width:${(r.score * 100).toFixed(1)}%"></i></div><span>${percent(r.score)}</span></div>`
+  ).join("");
+  result.innerHTML =
+    `<div class="bin" style="background:${info.color}">${info.bin}</div>` +
+    `<p class="tip">${info.tip}</p>` +
+    `<p class="scores-label">How sure the model is (top 3)</p>${rows}` +
+    (top.score < NOT_SURE_BELOW ? '<p class="warn">Not sure. Try a clearer photo of one item on a plain background.</p>' : "");
+  if (matchMedia("(max-width: 760px)").matches) result.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function handle(blob) {
+  result.innerHTML = '<p class="waiting">Looking at the photo…</p>';
+  try {
+    await session;
+  } catch {
+    result.innerHTML = `<p class="error">${MODEL_FAILED}</p>`;
+    return;
+  }
+  try {
+    const ranked = await classifyImage(blob);
+    const url = URL.createObjectURL(blob);
+    dropContent.innerHTML = "";
+    const img = new Image();
+    img.src = url;
+    img.alt = "The photo you chose";
+    img.onload = () => URL.revokeObjectURL(url);
+    dropContent.append(img);
+    show(ranked);
+  } catch {
+    result.innerHTML = `<p class="error">${UNREADABLE}</p>`;
+  }
+}
+
+const fileInput = document.getElementById("file");
+fileInput.addEventListener("change", () => {
+  if (fileInput.files[0]) handle(fileInput.files[0]);
+  fileInput.value = "";
+});
+
+const drop = document.getElementById("drop");
+for (const type of ["dragenter", "dragover"]) {
+  drop.addEventListener(type, (e) => { e.preventDefault(); drop.classList.add("over"); });
+}
+for (const type of ["dragleave", "drop"]) {
+  drop.addEventListener(type, (e) => { e.preventDefault(); drop.classList.remove("over"); });
+}
+drop.addEventListener("drop", (e) => {
+  if (e.dataTransfer.files[0]) handle(e.dataTransfer.files[0]);
+});
+
+const examples = document.getElementById("examples");
+for (const name of CLASSES) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("aria-label", `Try the example photo of ${name}`);
+  button.innerHTML = `<img src="examples/${name}.jpg" alt="" loading="lazy">`;
+  button.addEventListener("click", async () => {
+    const response = await fetch(`examples/${name}.jpg`);
+    handle(await response.blob());
+  });
+  examples.append(button);
+}
+</script>
+</body>
+</html>
